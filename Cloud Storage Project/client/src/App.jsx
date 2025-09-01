@@ -33,9 +33,8 @@ function App() {
   }
 
   async function handleDelete(filename) {
-    const response = await fetch(URL, {
+    const response = await fetch(`${URL}${filename}`, {
       method: "DELETE",
-      body: filename,
     });
     const data = await response.text();
     console.log(data);
@@ -49,9 +48,12 @@ function App() {
 
   async function saveFilename(oldFilename) {
     setNewFilename(oldFilename);
-    const response = await fetch(URL, {
+    const response = await fetch(`${URL}${oldFilename}`, {
       method: "PATCH",
-      body: JSON.stringify({ oldFilename, newFilename }),
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ newFilename }),
     });
     const data = await response.text();
     console.log(data);
