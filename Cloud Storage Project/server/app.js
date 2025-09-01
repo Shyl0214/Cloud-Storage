@@ -1,6 +1,5 @@
-import { error } from "console";
 import express from "express";
-import { readdir, rm } from "fs/promises";
+import { readdir, rm, rename } from "fs/promises";
 
 const app = express();
 
@@ -13,6 +12,7 @@ app.use((req, res, next) => {
   res.set({
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "*",
+    "Access-Control-Allow-Headers": "*",
   });
   next();
 });
@@ -27,6 +27,7 @@ app.get("/", async (req, res) => {
 });
 
 // dynamic routing
+// get 
 app.get("/:fileName", (req, res) => {
   console.log(req.query);
   if (req.query.action === "download") {
@@ -48,6 +49,20 @@ app.delete("/:fileName", async (req, res) => {
     res.json({ message: "File delete successfully" });
   } catch (err) {
     res.status(404).json({ message: "File not found" });
+  }
+});
+
+//update 
+app.patch("/:fileName", async (req, res) => {
+  const { fileName } = req.params;
+  console.log(fileName);
+  console.log(req.body.newFilename);
+
+  try {
+    await rename(`./storage/${fileName}`, `./storage/${req.body.newFilename}`);
+    res.json({ message: "Renamed successfully" });
+  } catch (err) {
+    res.status(404).json({ message: "Error renaming file" });
   }
 });
 
