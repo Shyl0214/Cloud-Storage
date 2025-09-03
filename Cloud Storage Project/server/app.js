@@ -2,6 +2,7 @@ import express from "express";
 import { createWriteStream } from "fs";
 import { readdir, rm, rename, stat } from "fs/promises";
 import cors from "cors";
+import { dir } from "console";
 
 const app = express();
 
@@ -15,16 +16,20 @@ app.use(cors());
 const serveStatic = express.static("storage");
 
 // serving dir content
-app.get("/directory", async (req, res) => {
-  const fileList = await readdir("storage");
+app.get("/directory/:dirname?", async (req, res) => { // optional dynamic routing 
+  const { dirname } = req.params;
+  console.log(dirname);
+  const fullPath = `./storage/${dirname ? dirname : ""}`;
+  const fileList = await readdir(fullPath);
   const resData = [];
   for (let items of fileList) {
-    const stats = await stat(`/storage${items}`);
+    const stats = await stat(`${fullPath}/${items}`);
     resData.push({
-      name: `${items}`,
-      isDirectory: stats.isDirectory(`${items}`),
+      name: items,
+      isDirectory: stats.isDirectory(),
     });
   }
+  console.log(resData);
   res.json(resData);
 });
 
