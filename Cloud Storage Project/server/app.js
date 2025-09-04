@@ -1,8 +1,7 @@
 import express from "express";
 import { createWriteStream } from "fs";
-import { readdir, rm, rename, stat } from "fs/promises";
+import { readdir, rm, rename, stat, mkdir } from "fs/promises";
 import cors from "cors";
-import { dir } from "console";
 
 const app = express();
 
@@ -16,39 +15,51 @@ app.use(cors());
 const serveStatic = express.static("storage");
 
 // serving dir content
-app.get("/directory/:dirname?", async (req, res) => { // optional dynamic routing 
-  const { dirname } = req.params;
-  console.log(dirname);
-  const fullPath = `./storage/${dirname ? dirname : ""}`;
-  const fileList = await readdir(fullPath);
+// Read
+app.get("/directory/*?", async (req, res) => {
+  const nestedPath = req.params[0] || ""; // multiple level nested dir support
+  // console.log("nested-path", nestedPath);
+  const fullDirPath = `./storage/${nestedPath}`;
+  const filesList = await readdir(fullDirPath);
   const resData = [];
-  for (let items of fileList) {
-    const stats = await stat(`${fullPath}/${items}`);
-    resData.push({
-      name: items,
-      isDirectory: stats.isDirectory(),
-    });
+  for (const item of filesList) {
+    const stats = await stat(`${fullDirPath}/${item}`);
+    resData.push({ name: item, isDirectory: stats.isDirectory() });
   }
-  console.log(resData);
   res.json(resData);
 });
 
+//creating directory
+app.post("/directory/*", async (req, res) => {
+  const nestedPath = req.params[0] || "";
+  try {
+    await mkdir(`./storage/${nestedPath}`, { recursive: true });
+    res.json({ message: "Directory created successfully" });
+  } catch (err) {
+    res
+      .status(400)
+      .json({ message: "Directory was not created", error: err.message });
+  }
+});
+
 // dynamic routing
-app.get("/files/:fileName", (req, res) => {
-  console.log(req.query);
+app.get("/files/*", (req, res) => {
+  let nestedPath = req.params[0] || ""; // multi level nested file support
+  // console.log("Nested-Path : ", nestedPath);
+
   if (req.query.action === "download") {
     res.set("Content-Disposition", "attachment");
   }
-  const { fileName } = req.params;
-  console.log({ fileName });
-  res.sendFile(`${import.meta.dirname}/storage/${fileName}`);
+  res.sendFile(`${import.meta.dirname}/storage/${nestedPath}`);
 });
 
 // upload
-app.post("/files/:fileName", (req, res) => {
-  console.log(req.params.fileName);
-  const { fileName } = req.params;
-  const writeStream = createWriteStream(`./storage/${req.params.fileName}`);
+app.post("/files/*", (req, res) => {
+  // console.log(req.params.fileName);
+  // const { fileName } = req.params;
+  const nestedPath = req.params[0] || "";
+  console.log("upload", nestedPath);
+  const writeStream = createWriteStream(`./storage/${nestedPath}`);
   req.pipe(writeStream);
   req.on("end", () => {
     res.json({ message: "File uploaded successfully" });
@@ -56,12 +67,18 @@ app.post("/files/:fileName", (req, res) => {
 });
 
 //update
-app.patch("/files/:fileName", async (req, res) => {
-  const { fileName } = req.params;
-  console.log(fileName);
-  console.log(req.body.newFilename);
+app.patch("/files/*", async (req, res) => {
+  const nestedPath = req.params[0] || "";
+  console.log(req.body);
+  let newName = req.body.newFilename;
+
+  // remove leading slashes to keep it relative
+  if (newName.startsWith("/")) {
+    newName = newName.slice(1);
+  }
+
   try {
-    await rename(`./storage/${fileName}`, `./storage/${req.body.newFilename}`);
+    await rename(`./storage/${nestedPath}`, `./storage/${newName}`);
     res.json({ message: "Renamed successfully" });
   } catch (err) {
     res.status(404).json({ message: "Error renaming file" });
@@ -69,15 +86,15 @@ app.patch("/files/:fileName", async (req, res) => {
 });
 
 // delete
-app.delete("/files/:fileName", async (req, res) => {
-  const { fileName } = req.params;
-  const filePath = `./storage/${fileName}`;
+app.delete("/files/*", async (req, res) => {
+  const nestedPath = req.params[0] || "";
+  const filePath = `./storage/${nestedPath}`;
   console.log(filePath);
   try {
-    await rm(filePath);
+    await rm(filePath, { recursive: true }); // recursive true => can delete folders too
     res.json({ message: "File delete successfully" });
   } catch (err) {
-    res.status(404).json({ message: "File not found" });
+    res.status(404).json(err.message);
   }
 });
 
