@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import filesRoute from "./routes/filesRoutes.js";
+import fileRoute from "./routes/fileRoutes.js";
 import directoryRoute from "./routes/directoryRoutes.js";
 
 const app = express();
@@ -12,7 +12,7 @@ app.use(cors());
 const serveStatic = express.static("storage");
 
 app.use("/directory", directoryRoute);
-app.use("/file", filesRoute);
+app.use("/file", fileRoute);
 
 app.use((req, res, next) => {
   if (req.query.action === "download") {
